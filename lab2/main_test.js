@@ -1,84 +1,68 @@
-const test = require('node:test');
+const testLib = require('node:test'); // Renamed 'test' to 'testLib' to avoid conflicts with the test object
 const assert = require('assert');
 const fs = require('fs');
-const path = require('path');
+
+// Mock the file containing names
+testLib.mock.method(fs, 'readFile', (file, options, callback) => {
+    callback(null, 'John\nDoe\nSmith');
+});
+
 const { Application, MailSystem } = require('./main');
 
-// Stub
-const tempNameListPath = path.join(__dirname, 'name_list.txt');
-
-async function setup() {
-    fs.writeFileSync(tempNameListPath, 'Alice\nBob\nCharlie');
-}
-
-async function teardown() {
-    fs.unlinkSync(tempNameListPath);
-}
-
-// Mock
-function createMockFn(originalFn) {
-    const mockFn = function(...args) {
-        mockFn.calls.push(args); 
-        return originalFn.apply(this, args);
-    };
-    mockFn.calls = []; 
-    return mockFn;
-}
-
-// Spy
-test('MailSystem.write should return correct context', async (t) => {
+testLib('MailSystem - write() method writes mail content', () => { // Renamed 'test' to 'testLib'
     const mailSystem = new MailSystem();
-    assert.strictEqual(mailSystem.write('Alice'), 'Congrats, Alice!');
-    assert.strictEqual(mailSystem.write(null), 'Congrats, null!', 'Should handle null');
-    assert.strictEqual(mailSystem.write(123), 'Congrats, 123!', 'Should handle numbers');
+    const name = 'Alice';
+    const context = mailSystem.write(name);
+    assert.strictEqual(context, 'Congrats, Alice!');
 });
 
-// MailSystem.send test
-test('MailSystem.send should handle both success and failure', async (t) => {
+testLib('MailSystem - send() method sends mail to recipient successfully', () => { // Renamed 'test' to 'testLib'
     const mailSystem = new MailSystem();
-    let originalRandom = Math.random; 
-    Math.random = () => 0.9; // if succeed
-    assert.strictEqual(mailSystem.send('Alice', 'Congrats, Alice!'), true, 'Should be sent successfully');
-    Math.random = () => 0.1; // if failed
-    assert.strictEqual(mailSystem.send('Bob', 'Sorry, Bob!'), false, 'Should fail to send');
-    Math.random = originalRandom; 
+    const name = 'Alice';
+    testLib.mock.method(Math, 'random', () => 0.8); // Mock Math.random() to return 0.8
+    assert.strictEqual(mailSystem.send(name, 'success'), true); // Confirm successful mail sending
 });
 
-// Application test
-test('Application should initialize and function correctly', async (t) => {
-    await setup();
+testLib('MailSystem - send() method fails to send mail to recipient', () => { // Renamed 'test' to 'testLib'
+    const mailSystem = new MailSystem();
+    const name = 'Alice';
+    testLib.mock.method(Math, 'random', () => 0.2); // Mock Math.random() to return 0.2
+    assert.strictEqual(mailSystem.send(name, 'fail'), false); // Confirm failed mail sending
+});
 
+testLib('Application - getNames retrieves names from file', async () => { // Renamed 'test' to 'testLib'
+    const application = new Application([], [], {});
+    await application.getNames();
+    assert.deepStrictEqual(application.people, ['John', 'Doe', 'Smith']);
+});
+
+testLib('Application - getRandomPerson returns a person', async () => { // Renamed 'test' to 'testLib'
+    const application = new Application([], [], {});
+    await application.getNames();
+    const person = application.getRandomPerson();
+    assert(['John', 'Doe', 'Smith'].includes(person));
+});
+
+testLib('Application - selectNextPerson selects a person', async () => { // Renamed 'test' to 'testLib'
     const app = new Application();
-    await new Promise(resolve => setTimeout(resolve, 100)); 
-    assert.strictEqual(app.people.length, 3, 'Should load 3 people');
+    const [names] = await app.getNames();
+    app.selected = ['John'];
+    let count = 0;
+    testLib.mock.method(app, 'getRandomPerson', () => names[count++]);
+    assert.strictEqual(app.selectNextPerson(), 'Doe');
+    assert.deepStrictEqual(app.selected, ['John', 'Doe']);
+    assert.strictEqual(app.selectNextPerson(), 'Smith');
+    assert.deepStrictEqual(app.selected, ['John', 'Doe', 'Smith']);
+    assert.strictEqual(app.selectNextPerson(), null);
+});
 
-    const selectedFirst = app.selectNextPerson();
-    assert.ok(app.selected.includes(selectedFirst), 'Selected person should be in selected array');
-
-    const selectedSecond = app.selectNextPerson();
-    assert.ok(app.selected.includes(selectedSecond), 'Second selected person should be in selected array');
-    assert.notStrictEqual(selectedFirst, selectedSecond, 'Should select different people');
-
-    app.mailSystem.write = createMockFn(app.mailSystem.write);
-    app.mailSystem.send = createMockFn(app.mailSystem.send);
+testLib('Application - notifySelected notifies all selected people', async () => { // Renamed 'test' to 'testLib'
+    const app = new Application();
+    const [names] = await app.getNames();
+    app.selected = names.slice(); // Select all names initially
+    app.mailSystem.send = testLib.mock.fn(app.mailSystem.send);
+    app.mailSystem.write = testLib.mock.fn(app.mailSystem.write);
     app.notifySelected();
-    assert.strictEqual(app.mailSystem.write.calls.length, 2, 'write should be called for each selected person');
-    assert.strictEqual(app.mailSystem.send.calls.length, 2, 'send should be called for each selected person');
-
-    await teardown();
-});
-
-test('Application should return null when all are selected', async (t) => {
-    await setup();
-
-    const app = new Application();
-    await new Promise(resolve => setTimeout(resolve, 100)); 
-
-    app.selectNextPerson();
-    app.selectNextPerson();
-    app.selectNextPerson(); 
-    const result = app.selectNextPerson();
-    assert.strictEqual(result, null, 'Should return null when all are selected');
-
-    await teardown();
+    assert.strictEqual(app.mailSystem.send.mock.calls.length, names.length);
+    assert.strictEqual(app.mailSystem.write.mock.calls.length, names.length);
 });
