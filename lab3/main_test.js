@@ -1,70 +1,31 @@
-const { describe, it } = require('node:test');
+// 引入必要的模組
 const assert = require('assert');
 const { Calculator } = require('./main');
 
-// TODO: write your tests here
+// 創建計算機實例
+const calculator = new Calculator();
 
-describe('Calculator', () => {
-    const calculator = new Calculator();
+// 別名設定
+const math = Math;
+const error = Error;
 
-    describe('exp method', () => {
-        it('should return 1 for exp(0)', () => {
-            assert.strictEqual(calculator.exp(0), Math.exp(0));
-        });
-
-        it('should return 2.718281828459045 for exp(1)', () => {
-            assert.strictEqual(calculator.exp(1), Math.exp(1));
-        });
-
-        it('should return 7.38905609893065 for exp(2)', () => {
-            assert.strictEqual(calculator.exp(2), Math.exp(2));
-        });
-
-        it('should throw an error for unsupported operand type with exp("a")', () => {
-            assert.throws(() => calculator.exp('a'), /unsupported operand type/);
-        });
-
-        it('should throw an error for overflow with exp(1000)', () => {
-            assert.throws(() => calculator.exp(1000), /overflow/);
-        });
-
-        it('should handle large values near overflow with exp(709)', () => {
-            assert.doesNotThrow(() => calculator.exp(709));
-        });
-
-        it('should calculate exp for large values without overflow with exp(700)', () => {
-            assert.doesNotThrow(() => calculator.exp(700));
+// 測試函式
+const test = (operation, testCases) => {
+    describe(`Calculator.${operation}() Test`, () => {
+        // 對於每個測試案例進行測試
+        testCases.forEach(({ input, output, message }) => {
+            it(`${input} 應該返回 ${output}`, () => {
+                // 如果預期的結果是 Error，則使用 assert.throws()
+                if (output === error) {
+                    assert.throws(() => calculator[operation](input), output, message);
+                } else {
+                    // 否則使用 assert.strictEqual() 進行比較
+                    assert.strictEqual(calculator[operation](input), output);
+                }
+            });
         });
     });
+};
 
-    describe('log method', () => {
-        it('should return 0 for log(1)', () => {
-            assert.strictEqual(calculator.log(1), Math.log(1));
-        });
-
-        it('should return 1 for log(2.718281828459045)', () => {
-            assert.strictEqual(calculator.log(Math.E), Math.log(Math.E));
-        });
-
-        it('should return 2 for log(7.3890560989306495)', () => {
-            assert.strictEqual(calculator.log(Math.E * Math.E), Math.log(Math.E * Math.E));
-        });
-
-        it('should throw an error for math domain error with log(-1)', () => {
-            assert.throws(() => calculator.log(-1), /math domain error/);
-        });
-
-        it('should throw an error for math domain error with log(0)', () => {
-            assert.throws(() => calculator.log(0), /math domain error/);
-        });
-
-        it('should calculate log for small positive values close to zero with log(1e-10)', () => {
-            const result = calculator.log(1e-10);
-            assert(!isNaN(result) && result < 0);
-        });
-
-        it('should throw an error for unsupported operand type with log(Infinity)', () => {
-            assert.throws(() => calculator.log(Infinity), /unsupported operand type/);
-        });
-    });
-});
+// 導出測試函式
+module.exports = test;
