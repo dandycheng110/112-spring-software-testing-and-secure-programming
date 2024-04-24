@@ -14,9 +14,9 @@ const puppeteer = require('puppeteer');
 
     const searchResultSelector = '#docsearch-item-5 > a > div > div.DocSearch-Hit-content-wrapper > span.DocSearch-Hit-path';
     await page.waitForSelector(searchResultSelector);
-    await page.click(searchResultSelector, {delay: 1000});
+    await page.click(searchResultSelector, {delay: 3000});
     
-    const titleSelector = '#__docusaurus_skipToContent_fallback > div > div > main > div > div > div > div > article > div.theme-doc-markdown.markdown > h1';
+    const titleSelector = 'h1';
     await page.waitForSelector(titleSelector, {delay: 1000});
     await page.click(titleSelector);
 
